@@ -147,4 +147,39 @@ def get_stream(camera_id):
 3. Once a camera is plugged in - how does it get to the config.yaml where it will be later accesed by the backend?
 
 ## M-JPEG : Motion JPEG
-- https://www.technexion.com/resources/h-264-vs-mjpeg-in-embedded-vision-all-you-need-to-know/ 
+- https://www.technexion.com/resources/h-264-vs-mjpeg-in-embedded-vision-all-you-need-to-know/
+- Embedded Vision Technology requires efficient video compression - here's where MJPEG and H264 come into play.
+- Compression allows efficient video `stream storage, transmission, and processing. Eliminating redundant information minimizes bandwidth requirements` and lowers storage costs, `making high-resolution video capture and analysis feasible` on resource-constrained embedded devices. 
+- Compression minimizes the amount of data that must be transfered allowing for better utilization of the available bandwidth - `we wouldn't want a stream that taxes on our network resources.`
+    #### MJPEG
+    - Encodes each video frame as a separate JPEG image => high quality images with no interframe prediction.
+    - Computationally simple - best suited for embedded sys. that require real-time encoding and decoding.
+    - Each frame is an independent entity
+        ##### benefits:
+        - low latency
+        - quality retention
+        - low cpu load
+
+        - most used in IP cameras
+        - industrial automation
+        - medical imaging
+    
+    #### H.264
+    - High compression efficiency. Perfect for low bandwidth/storage
+    - Retains quality even at low bitrates
+
+        ##### drawbacks
+        - Computational load - higher than MJPEG as it uses advanced techniques to compare sequential frames and encoding the difference between them.
+        - The high compression efficiency may incur higher latency.
+
+### Comparison : MJPEG vs H.264
+
+![alt text](h264-mjpeg_comparison.png)
+
+Quality and compression: MJPEG provides improved quality at the expense of inefficient compression. H.264, on the other hand, offers much more efficient compression but at a cost of higher latency and computational load.
+
+CPU utilization: MJPEG uses less CPU power for decoding, which may be useful in low-power systems. H.264 needs additional computing power, particularly while encoding.
+
+`Real-time uses: MJPEG has a low latency requirement, so it is suited for real-time systems. H.264 is better suited for situations where storage and bandwidth are more important.`
+
+Flexibility: H.264 provides various profiles and features, making it applicable to various circumstances. Since it is less versatile, MJPEG is easier to build but has less functionality
