@@ -1,0 +1,9 @@
+Configure your EC2 security group to allow inbound traffic on ports 3000 (React), 5000 (Flask), and 8554 (go2rtc)
+[Understanding RTSP/Cameras](https://www.fs.com/blog/understanding-rtsp-and-rtsp-cameras-a-comprehensive-guide-7256.html)
+Remember to make the file executable:
+``` bash
+ wget https://github.com/AlexxIT/go2rtc/releases/latest/download/go2rtc_linux_amd64 -O ./go2rtc
+```
+``` bash
+ sudo chmod +x go2rtc
+```

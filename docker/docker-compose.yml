@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ai_models:/app/ai_models
+
+  go2rtc:
+    image: go2rtc/go2rtc:latest
+    ports:
+      - "1984:1984"
+      - "8554:8554"
+    volumes:
+      - ./go2rtc_config:/config
