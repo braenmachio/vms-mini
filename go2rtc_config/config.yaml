@@ -1,7 +1,9 @@
 webrtc:
-  listen: ":8554"
+  listen: ":8555"
 rtsp:
-  listen: ":8554"
+  listen: ":8554" # external access - alt. localhost:8554 for local access "restricted"
 stream:
-  # You can add your RTSP streams here
-  # example: camera1: rtsp://username:password@camera-ip:554/stream
+  # we will run streams as below
+  camera: "rtsp://username:password@ip:554/stream" # this is the config for a basic stream
+  # transcode any input stream to h264 and scale it to any resolution
+  transcode: ffmpeg:rtsp://username:password@ip:554/stream#video=h264#scale=1280:720

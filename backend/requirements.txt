@@ -3,3 +3,4 @@ flask-cors
 python-dotenv
 opencv-python-headless
 numpy
+ultralytics

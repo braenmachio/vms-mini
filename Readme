@@ -1,9 +1,150 @@
-Configure your EC2 security group to allow inbound traffic on ports 3000 (React), 5000 (Flask), and 8554 (go2rtc)
-[Understanding RTSP/Cameras](https://www.fs.com/blog/understanding-rtsp-and-rtsp-cameras-a-comprehensive-guide-7256.html)
-Remember to make the file executable:
+# Linux Ubuntu and go2rtc
+
+- [Understanding RTSP and Cameras](https://www.fs.com/blog/understanding-rtsp-and-rtsp-cameras-a-comprehensive-guide-7256.html)
+
 ``` bash
- wget https://github.com/AlexxIT/go2rtc/releases/latest/download/go2rtc_linux_amd64 -O ./go2rtc
+wget https://github.com/AlexxIT/go2rtc/releases/latest/download/go2rtc_linux_amd64 -O ./go2rtc
 ```
 ``` bash
- sudo chmod +x go2rtc
+sudo chmod +x go2rtc # make the file executable
 ```
+
+- The goal is to stream from multiple sources - RTSP, RTMP, DVRIP, HTTP (FLV/MJPEG/JPEG/TS), USB cameras.
+- go2rtc : 
+    - supports compatible ffmpeg source
+    - real-time transcoding for unsupported codecs via FFmpeg
+    - streams from private networks via ngrok
+
+### Best Practices
+1. Camera Selection Tips:
+
+ [Dahua - Standard protocol implementation, rich settings, high stream quality](https://www.hubtech.co.ke/dahua-cctv-camera-price-list-in-kenya/)
+
+[DH-IPC-HDBW1431EP-0280B-S4](https://secomworld.co.ke/product/dahua-4mp-wdr-ir-mini-dome-dh-ipc-hdbw1431ep-0280b-s4-cctv/)
+
+![IP Cameras](dahua-cameras.png)
+
+- Hikvision - Feature-rich but relies on proprietary protocols
+- Reolink - Some models have poor RTSP implementation, consider using RTMP
+- TP-Link - Limited concurrent connections, potential packet loss
+2. Performance Optimization:
+- Use native encoding when possible, avoid unnecessary transcoding
+- Use sub-streams for performance-limited devices
+- Enable TCP mode with RTSP for better stability
+3. Security Recommendations:
+- Restrict API and RTSP to local access only
+- Enable authentication for external WebRTC access
+- Use HTTPS for better security
+
+## FFMPEG
+https://ffmpeg.org/ffmpeg.html
+- This is a universal media converter.
+- Reads a variety of including network streams and writes to an arbitary number of outputs specified by plain output url.
+- This is built into go2rtc.
+
+## go2rtc
+- Several stream(ing) sources are supported by go2rtc:
+    1. Camera/Video sources
+        - rtsp: for IP cameras using real-time streaming protocol
+        - rtmp: for streams using real-time messaging protocol
+        - ffmpeg:device: for local usb cameras and webcams
+    2. Camera Brands
+        - TP-Link : tapo and Kasa cameras
+        - gopro
+        - roborock vacuum cameras
+    3. Network Video Sources
+        - http: supports various web streaming protocol for IP Cameras
+        - onvif: Industry standard protocol for IP cameras
+        - webrtc: WebRTC?WHEP source.
+        - webtorrent: peer to peer streaming via webtorrent
+    4. DVR/NVR Systems
+        - bubble for ESeeCloud/dvr163 NVR sources
+        - dvrip: for DVR-IP NVR sources
+    5. External source Integration
+        - ffmpeg - general purpose integration with ffmpeg
+        - exec: run external applicatons for media
+        - ` 📎echo: get stream links via bash/python.`
+        - expr: Use built-in expression language for stream links.
+
+    ### go2rtc protocol conversion
+    - One stream can be accessed in any other protocol.
+    - ` 📎Input Protocols -> go2rtc Processing -> Output Protocols`
+        - Input could be: RTSP cameras, RTMP streams, HTTP streams (MJPEG, HLS), localusb cameras etc
+        - Output destination could be: WebRTC (browser friendly streaming), RTSP, MSE (Media Source Extension) and MP4 for recording.
+    - The conversion process.
+            - go2rtc recieves the input stream
+            - decodes if necessary
+            - re-encodes to desired format
+            - handles codec negotiations e.g. h264/5 to vp8/9 for webrtc
+            - manages the streaming protocol handshake
+
+        - example:
+        ``` yaml
+        stream:
+            camera1: rtsp://camera_ip/stream1 # rtsp input
+        ```
+        - The above stream can be accessed as:
+            - WebRTC: `ws://server:8555/api/ws`
+            - RTSP: `rtsp://server:8554/camera1` # conversion not needed
+            - Browser MSE: `http://server:1984/stream.html`
+        ### 📎 the goal:
+        - `We can input any supported protocol and output it in a format that works best for our application e.g. useful for browsers that cannot directly access rtsp streams.`
+
+
+    ### YOLO Backend. Minimal Latency
+- 📎The best format to receive `raw frames` directly from go2rtc to the python backend.
+- go2rtc handles protocol conversion from any source and we use it in its HTTP/MJPEG output which is easily consumable by OpenCV
+    - Conceptual Flow:
+        - `Camera (any protocol) -> go2rtc -> MJPEG -> Python/OpenCV -> YOLO`
+
+    - Example config in go2rtc
+    ``` yaml
+    streams:
+        camera1: rtsp://camera_ip:554/stream
+        camera2: rtmp:// ...
+    ```
+    - In the python backend, consume the stream like:
+    ``` python
+    import cv2
+
+    def get_stream(camera_id):
+        # connect to go2rtc MJPEG stream
+        stream_url = f'http://localhost:1984/api/stream.mjpeg?src={camera_id}'
+        cap = cv2.VideoCapture(stream_url)
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                continue
+
+            # now this presents us with raw frames for YOLO processing
+            # frame is a numpy array ready for inference
+            results = yolo_model(frame)
+            
+            # process results
+    ```
+
+    ### adv. of this process
+    - MJPEG formart provides raw frames without need for complex decoding
+    - OpenCV efficiently reads MJPEG streams
+    - Does away with additional decoding steps before YOLO processing
+    - `📎Primarily, we remain camera agnostic as go2rtc supports multiple ones`
+    ### latency here depends on
+    - camera source latency
+    - Network conditions
+    - go2rtc processing time *** written in go, so its really fast - effect minimal
+    - YOLO inference time
+    
+## Concerns:
+1. How to we pass a stream from go2rtc to backend?
+```python
+def get_stream(camera_id):
+    # connect to go2rtc MJPEG stream
+    stream_url = f'http://localhost:1984/api/stream.mjpeg?src={camera_id}'
+    cap = cv2.VideoCapture(stream_url)
+```
+2. The above only passes RTSP, what about other protocols?
+3. Once a camera is plugged in - how does it get to the config.yaml where it will be later accesed by the backend?
+
+## M-JPEG : Motion JPEG
+- https://www.technexion.com/resources/h-264-vs-mjpeg-in-embedded-vision-all-you-need-to-know/ 
