@@ -104,6 +104,23 @@ https://ffmpeg.org/ffmpeg.html
         camera2: rtmp:// ...
     ```
     - In the python backend, consume the stream like:
+    
+    - In the localhost:1984/ we have: `stream.mjpeg MJPEG stream / browsers: all / codecs: MJPEG, JPEG`
+    - That inturn under the streams section returns : `http://localhost:1984/api/stream.mjpeg?src=camera1` for camera1 stream in the config.yaml
+    - Under the `info` section we will have:
+    ```javascript
+    {
+  "producers": [
+    {
+      "url": "rtsp://<camera_ip>:554/stream"
+    }
+  ],
+  "consumers": null
+    }
+
+    // the backend in this scenario would be the consumer
+    ```
+    
     ``` python
     import cv2
 
